@@ -1,5 +1,5 @@
 
-name: Build APK
+name: Build GAME BOOST APK
 
 on:
   workflow_dispatch:
@@ -15,35 +15,54 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      - name: Extract Project ZIP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          mkdir -p source
+          ZIP=$(find . -maxdepth 1 -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "Project ZIP not found!"
+            exit 1
+          fi
+          unzip -o "$ZIP" -d source
+          echo "ZIP extracted successfully"
+          find source -maxdepth 4 -type f | head -100
+
+      - name: Locate Android Project
+        run: |
+          WRAPPER=$(find source -type f -name gradlew | head -n 1)
+          if [ -z "$WRAPPER" ]; then
+            echo "ERROR: gradlew not found inside ZIP"
+            find source -type f \( -name build.gradle -o -name build.gradle.kts -o -name settings.gradle -o -name settings.gradle.kts \)
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$WRAPPER")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          chmod +x "$WRAPPER"
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: ''
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
 
       - name: Accept Licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Install Android SDK
-        run: |
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
-
-      - name: Grant Permission
-        run: chmod +x gradlew
-
       - name: Build APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GAME-BOOST-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: source/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
