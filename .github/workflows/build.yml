@@ -27,7 +27,10 @@ jobs:
           sudo apt-get install -y unzip
           mkdir -p source
           ZIP=$(find . -maxdepth 1 -iname '*.zip' | head -n 1)
-          test -n "$ZIP" || exit 1
+          if [ -z "$ZIP" ]; then
+            echo "ZIP project tidak ditemukan"
+            exit 1
+          fi
           unzip -o "$ZIP" -d source
 
       - name: Setup Gradle
@@ -35,16 +38,19 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager tidak ditemukan"
+            exit 1
+          fi
 
-      - name: Accept Licenses
-        run: yes | sdkmanager --licenses || true
+          yes | "$SDKMANAGER" --licenses || true
+
+          "$SDKMANAGER" "platform-tools"
+          "$SDKMANAGER" "platforms;android-35"
+          "$SDKMANAGER" "build-tools;35.0.0"
 
       - name: Build APK
         run: |
