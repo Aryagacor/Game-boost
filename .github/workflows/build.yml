@@ -1,3 +1,4 @@
+
 name: Build APK
 
 on:
@@ -5,9 +6,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '**'
-      - '.github/workflows/build.yml'
 
 jobs:
   build:
@@ -26,16 +24,25 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Grant Permission
-        run: chmod +x ./gradlew
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses
 
-      - name: Build Debug APK
+      - name: Install SDK Packages
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Grant Permission
+        run: chmod +x gradlew
+
+      - name: Build APK
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: APK-Download
+          name: GAME-BOOST-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           
